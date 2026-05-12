@@ -1,0 +1,60 @@
+service: sms-otp-verification-service
+
+frameworkVersion: '3'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 256
+  timeout: 29
+  logRetentionInDays: 14
+
+functions:
+  api:
+    handler: lambda.handler
+    environment:
+      NODE_ENV: development
+      APP_NAME: sms-otp-service
+      MONGODB_URI: ${env:MONGODB_URI, 'mongodb://localhost:27017/sms_otp_dev'}
+      JWT_SECRET: ${env:JWT_SECRET, 'local-dev-secret-key-minimum-32-characters'}
+      JWT_EXPIRES_IN: '7d'
+      TWILIO_ACCOUNT_SID: ${env:TWILIO_ACCOUNT_SID, ''}
+      TWILIO_AUTH_TOKEN: ${env:TWILIO_AUTH_TOKEN, ''}
+      TWILIO_PHONE_NUMBER: ${env:TWILIO_PHONE_NUMBER, ''}
+      OTP_LENGTH: '6'
+      OTP_EXPIRY_MINUTES: '2'
+      OTP_MAX_ATTEMPTS: '3'
+      OTP_RESEND_COOLDOWN_SECONDS: '30'
+      ALLOWED_ORIGINS: '*'
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3000
+    host: 0.0.0.0
+    noPrependStageInUrl: true
+
+package:
+  exclude:
+    - node_modules/.cache/**
+    - tests/**
+    - frontend/**
+    - .env
+    - '*.test.js'
+    - README.md
+    - .gitignore

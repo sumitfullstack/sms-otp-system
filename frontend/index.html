@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMS Verify — Phone Verification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --border-active: #3b3b5c;
+      --text: #e8e8f0;
+      --muted: #6b6b85;
+      --accent: #7c6af7;
+      --accent-glow: rgba(124, 106, 247, 0.25);
+      --accent-dim: rgba(124, 106, 247, 0.12);
+      --success: #34d399;
+      --success-glow: rgba(52, 211, 153, 0.2);
+      --error: #f87171;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Radial glow behind card */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(124,106,247,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+      margin: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 32px 64px rgba(0,0,0,0.5);
+    }
+
+    .card-top {
+      padding: 2.5rem 2.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(124,106,247,0.06) 0%, transparent 60%);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid rgba(124,106,247,0.2);
+      border-radius: 100px;
+      padding: 4px 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    .card-body {
+      padding: 2rem 2.5rem 2.5rem;
+    }
+
+    /* Steps indicator */
+    .steps {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 2rem;
+    }
+
+    .step-dot {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: all 0.4s ease;
+    }
+
+    .step-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+    .step-dot.done { background: var(--success); }
+
+    /* Form screens */
+    .screen { display: none; }
+    .screen.visible {
+      display: block;
+      animation: fadeUp 0.35s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .field-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    /* Phone input with flag prefix */
+    .phone-wrapper {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: rgba(255,255,255,0.02);
+      margin-bottom: 1.25rem;
+    }
+
+    .phone-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .country-prefix {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
+      border-right: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: nowrap;
+      background: rgba(255,255,255,0.01);
+    }
+
+    input[type="tel"],
+    input[type="text"] {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 1rem;
+      padding: 14px 16px;
+      width: 100%;
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    /* OTP code boxes */
+    .otp-boxes {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+
+    .otp-box {
+      flex: 1;
+      aspect-ratio: 1;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--text);
+      outline: none;
+      caret-color: var(--accent);
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    .otp-box:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      background: rgba(124,106,247,0.04);
+    }
+
+    .otp-box.filled {
+      border-color: var(--border-active);
+      background: rgba(124,106,247,0.06);
+    }
+
+    .otp-box.error {
+      border-color: var(--error);
+      box-shadow: 0 0 0 3px rgba(248,113,113,0.15);
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-6px); }
+      40%       { transform: translateX(6px); }
+      60%       { transform: translateX(-4px); }
+      80%       { transform: translateX(4px); }
+    }
+
+    /* Timer */
+    .timer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .timer {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .timer span { color: var(--accent); font-weight: 500; }
+    .timer.urgent span { color: var(--error); }
+
+    .resend-btn {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: not-allowed;
+      letter-spacing: 0.03em;
+      transition: color 0.2s;
+    }
+
+    .resend-btn.active {
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .resend-btn.active:hover { color: #a59cf9; }
+
+    /* Primary button */
+    .btn-primary {
+      width: 100%;
+      padding: 15px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--sans);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #8f7ef9;
+      box-shadow: 0 4px 20px rgba(124,106,247,0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+    .btn-primary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary.loading::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+    .btn-primary.loading { color: transparent; }
+
+    /* Status message */
+    .status-msg {
+      margin-top: 1rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      text-align: center;
+      min-height: 1.2em;
+      transition: all 0.3s;
+    }
+
+    .status-msg.error { color: var(--error); }
+    .status-msg.success { color: var(--success); }
+    .status-msg.info { color: var(--muted); }
+
+    /* Change number link */
+    .change-link {
+      display: block;
+      text-align: center;
+      margin-top: 1rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .change-link:hover { color: var(--accent); }
+
+    /* Success screen */
+    .success-screen {
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    .success-icon {
+      width: 72px; height: 72px;
+      margin: 0 auto 1.5rem;
+      background: var(--success-glow);
+      border: 2px solid var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .success-icon svg { width: 32px; height: 32px; color: var(--success); }
+
+    .success-screen h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .success-screen p {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .token-box {
+      background: rgba(52,211,153,0.05);
+      border: 1px solid rgba(52,211,153,0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+
+    .token-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--success);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .token-value {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    /* Phone display */
+    .phone-display {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+    }
+
+    /* API indicator */
+    .api-url {
+      font-family: var(--mono);
+      font-size: 0.67rem;
+      color: var(--border-active);
+      margin-top: 1.75rem;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-top">
+      <div class="badge">SMS Verify</div>
+      <h1>Phone<br/>Verification</h1>
+      <p class="subtitle">// secure · otp · jwt authenticated</p>
+    </div>
+    <div class="card-body">
+      <!-- Progress steps -->
+      <div class="steps">
+        <div class="step-dot active" id="step1"></div>
+        <div class="step-dot" id="step2"></div>
+        <div class="step-dot" id="step3"></div>
+      </div>
+
+      <!-- Screen 1: Phone number entry -->
+      <div class="screen visible" id="screen-phone">
+        <label class="field-label">Mobile Number</label>
+        <div class="phone-wrapper">
+          <div class="country-prefix">🌍 +</div>
+          <input
+            type="tel"
+            id="phone-input"
+            placeholder="1 415 555 0100"
+            autocomplete="tel"
+            inputmode="tel"
+          />
+        </div>
+        <button class="btn-primary" id="send-btn" onclick="sendOTP()">
+          Send Verification Code
+        </button>
+        <div class="status-msg" id="send-status"></div>
+        <p class="api-url">POST /api/v1/otp/send</p>
+      </div>
+
+      <!-- Screen 2: OTP entry -->
+      <div class="screen" id="screen-otp">
+        <label class="field-label">Verification Code</label>
+        <div class="phone-display" id="phone-display"></div>
+        <div class="otp-boxes" id="otp-boxes">
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+        </div>
+        <div class="timer-row">
+          <div class="timer" id="timer">Expires in <span id="timer-val">2:00</span></div>
+          <button class="resend-btn" id="resend-btn" onclick="resendOTP()">Resend code</button>
+        </div>
+        <button class="btn-primary" id="verify-btn" onclick="verifyOTP()">
+          Verify Code
+        </button>
+        <div class="status-msg" id="verify-status"></div>
+        <span class="change-link" onclick="resetFlow()">← Change phone number</span>
+        <p class="api-url">POST /api/v1/otp/verify</p>
+      </div>
+
+      <!-- Screen 3: Success -->
+      <div class="screen" id="screen-success">
+        <div class="success-screen">
+          <div class="success-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h2>Verified!</h2>
+          <p>Your phone number has been<br/>successfully verified.</p>
+          <div class="token-box">
+            <div class="token-label">JWT Token</div>
+            <div class="token-value" id="jwt-display">—</div>
+          </div>
+          <button class="btn-primary" onclick="resetFlow()" style="background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3);">
+            Verify another number
+          </button>
+        </div>
+        <p class="api-url">GET /api/v1/user/me (JWT protected)</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Config ──────────────────────────────────────────
+    const API_BASE = window.location.origin + '/api/v1';
+
+    // ── State ───────────────────────────────────────────
+    let currentPhone = '';
+    let timerInterval = null;
+    let timerSeconds = 120;
+    let canResend = false;
+    let resendCooldown = null;
+
+    // ── OTP Box Behavior ────────────────────────────────
+    const otpBoxes = document.querySelectorAll('.otp-box');
+
+    otpBoxes.forEach((box, i) => {
+      box.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\D/g, '');
+        box.value = val.slice(-1);
+        box.classList.toggle('filled', !!box.value);
+
+        if (val && i < otpBoxes.length - 1) {
+          otpBoxes[i + 1].focus();
+        }
+
+        // Auto-verify when all 6 filled
+        const code = getOTPCode();
+        if (code.length === 6) verifyOTP();
+      });
+
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !box.value && i > 0) {
+          otpBoxes[i - 1].focus();
+          otpBoxes[i - 1].value = '';
+          otpBoxes[i - 1].classList.remove('filled');
+        }
+      });
+
+      box.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        [...pasted.slice(0, 6)].forEach((char, idx) => {
+          if (otpBoxes[idx]) {
+            otpBoxes[idx].value = char;
+            otpBoxes[idx].classList.add('filled');
+          }
+        });
+        const filled = Math.min(pasted.length, 6);
+        if (filled > 0) otpBoxes[filled - 1].focus();
+        if (pasted.length >= 6) verifyOTP();
+      });
+    });
+
+    function getOTPCode() {
+      return [...otpBoxes].map(b => b.value).join('');
+    }
+
+    // ── Timer ────────────────────────────────────────────
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerSeconds = 120;
+      canResend = false;
+      updateTimerDisplay();
+
+      timerInterval = setInterval(() => {
+        timerSeconds--;
+        updateTimerDisplay();
+        if (timerSeconds <= 0) {
+          clearInterval(timerInterval);
+          canResend = true;
+          setResendActive(true);
+          document.getElementById('timer').innerHTML = 'Code <span>expired</span>';
+          document.getElementById('timer').classList.add('urgent');
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const m = Math.floor(timerSeconds / 60);
+      const s = timerSeconds % 60;
+      document.getElementById('timer-val').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      const timerEl = document.getElementById('timer');
+      timerEl.classList.toggle('urgent', timerSeconds <= 30);
+    }
+
+    function setResendActive(active) {
+      const btn = document.getElementById('resend-btn');
+      btn.classList.toggle('active', active);
+      btn.style.cursor = active ? 'pointer' : 'not-allowed';
+    }
+
+    // ── Screen Navigation ────────────────────────────────
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+      document.getElementById(id).classList.add('visible');
+
+      // Update steps
+      const steps = ['screen-phone', 'screen-otp', 'screen-success'];
+      const idx = steps.indexOf(id);
+      document.querySelectorAll('.step-dot').forEach((dot, i) => {
+        dot.classList.remove('active', 'done');
+        if (i < idx) dot.classList.add('done');
+        else if (i === idx) dot.classList.add('active');
+      });
+    }
+
+    function setStatus(elId, msg, type = 'info') {
+      const el = document.getElementById(elId);
+      el.textContent = msg;
+      el.className = 'status-msg ' + type;
+    }
+
+    // ── API Calls ─────────────────────────────────────────
+    async function sendOTP() {
+      const rawPhone = document.getElementById('phone-input').value.trim().replace(/\s/g, '');
+      const phoneNumber = rawPhone.startsWith('+') ? rawPhone : '+' + rawPhone;
+
+      if (!/^\+[1-9]\d{7,14}$/.test(phoneNumber)) {
+        setStatus('send-status', 'Enter a valid phone number in E.164 format (e.g. +14155552671)', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('send-btn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+      setStatus('send-status', '', 'info');
+
+      try {
+        const res = await fetch(`${API_BASE}/otp/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          currentPhone = phoneNumber;
+          document.getElementById('phone-display').textContent = phoneNumber;
+          showScreen('screen-otp');
+          startTimer();
+          setResendActive(false);
+          otpBoxes[0].focus();
+
+          if (data.mock) {
+            setStatus('verify-status', '⚠ Mock mode: Check server logs for the OTP code.', 'info');
+          }
+        } else {
+          const msg = data.retryAfterSeconds
+            ? `Please wait ${data.retryAfterSeconds}s before resending.`
+            : (data.message || 'Failed to send code. Try again.');
+          setStatus('send-status', msg, 'error');
+        }
+      } catch (err) {
+        setStatus('send-status', 'Network error. Is the server running?', 'error');
+      } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    }
+
+    async function verifyOTP() {
+      const code = getOTPCode();
+      if (code.length !== 6) return;
+
+      const btn = document.getElementById('verify-btn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+      setStatus('verify-status', '', 'info');
+
+      try {
+        const res = await fetch(`${API_BASE}/otp/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: currentPhone, code }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          clearInterval(timerInterval);
+          document.getElementById('jwt-display').textContent =
+            data.token ? data.token.slice(0, 60) + '…' : '(token received)';
+          showScreen('screen-success');
+        } else {
+          // Shake boxes on error
+          otpBoxes.forEach(b => { b.classList.add('error'); });
+          setTimeout(() => otpBoxes.forEach(b => b.classList.remove('error')), 500);
+
+          const msg = data.message || 'Invalid code.';
+          setStatus('verify-status', msg, 'error');
+
+          if (data.code === 'OTP_EXPIRED' || data.code === 'OTP_EXHAUSTED') {
+            setResendActive(true);
+          }
+        }
+      } catch (err) {
+        setStatus('verify-status', 'Network error. Is the server running?', 'error');
+      } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    }
+
+    async function resendOTP() {
+      if (!canResend) return;
+      otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled', 'error'); });
+      setStatus('verify-status', '', 'info');
+      setResendActive(false);
+      document.getElementById('timer').classList.remove('urgent');
+
+      try {
+        const res = await fetch(`${API_BASE}/otp/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: currentPhone }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          startTimer();
+          otpBoxes[0].focus();
+          setStatus('verify-status', 'New code sent!', 'success');
+          setTimeout(() => setStatus('verify-status', '', 'info'), 2000);
+        } else {
+          setStatus('verify-status', data.message || 'Failed to resend.', 'error');
+          setResendActive(true);
+        }
+      } catch {
+        setStatus('verify-status', 'Network error.', 'error');
+        setResendActive(true);
+      }
+    }
+
+    function resetFlow() {
+      clearInterval(timerInterval);
+      currentPhone = '';
+      document.getElementById('phone-input').value = '';
+      otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled', 'error'); });
+      setStatus('send-status', '', 'info');
+      setStatus('verify-status', '', 'info');
+      document.getElementById('timer').classList.remove('urgent');
+      showScreen('screen-phone');
+    }
+
+    // Allow Enter key on phone input
+    document.getElementById('phone-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendOTP();
+    });
+  </script>
+</body>
+</html>
