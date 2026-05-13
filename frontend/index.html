@@ -68,7 +68,7 @@
       position: relative;
       z-index: 1;
       width: 100%;
-      max-width: 420px;
+      max-width: 480px;
       margin: 2rem;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -218,26 +218,27 @@
 
     /* OTP code boxes */
     .otp-boxes {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 1.25rem;
-    }
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+}
 
-    .otp-box {
-      flex: 1;
-      aspect-ratio: 1;
-      background: rgba(255,255,255,0.02);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      text-align: center;
-      font-family: var(--mono);
-      font-size: 1.5rem;
-      font-weight: 500;
-      color: var(--text);
-      outline: none;
-      caret-color: var(--accent);
-      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-    }
+.otp-box {
+  flex: 1;
+  aspect-ratio: 1;
+  max-width: 52px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text);
+  outline: none;
+  caret-color: var(--accent);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
 
     .otp-box:focus {
       border-color: var(--accent);
@@ -501,13 +502,13 @@
         <label class="field-label">Verification Code</label>
         <div class="phone-display" id="phone-display"></div>
         <div class="otp-boxes" id="otp-boxes">
-          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
-          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
-          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
-          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
-          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
-          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
-        </div>
+  <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+  <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+  <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+  <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+  <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+  <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" />
+</div>
         <div class="timer-row">
           <div class="timer" id="timer">Expires in <span id="timer-val">2:00</span></div>
           <button class="resend-btn" id="resend-btn" onclick="resendOTP()">Resend code</button>
