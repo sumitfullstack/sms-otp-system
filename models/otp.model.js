@@ -20,20 +20,16 @@ const otpSchema = new mongoose.Schema(
     phoneNumber: {
       type: String,
       required: true,
-      index: true,
     },
 
-    // Hashed OTP (never store plaintext)
     codeHash: {
       type: String,
       required: true,
     },
 
-    // Expiration timestamp (2 minutes from creation)
     expiresAt: {
       type: Date,
       required: true,
-      index: true, // TTL index set below for auto-cleanup
     },
 
     status: {
@@ -42,25 +38,21 @@ const otpSchema = new mongoose.Schema(
       default: OTP_STATUS.PENDING,
     },
 
-    // Track failed verification attempts
     attempts: {
       type: Number,
       default: 0,
     },
 
-    // Maximum allowed attempts before locking
     maxAttempts: {
       type: Number,
       default: 3,
     },
 
-    // IP address of the request (for abuse detection)
     ipAddress: {
       type: String,
       default: null,
     },
 
-    // When verification was completed
     verifiedAt: {
       type: Date,
       default: null,
@@ -71,19 +63,11 @@ const otpSchema = new mongoose.Schema(
   }
 );
 
-// --- TTL Index: Auto-delete OTP documents 10 minutes after expiry ---
-// This keeps the collection clean without manual cleanup jobs
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 600 });
 
-// --- Compound index for fast lookups ---
 otpSchema.index({ phoneNumber: 1, status: 1, expiresAt: 1 });
 
-// --- Instance Methods ---
 
-/**
- * Checks if this OTP record has expired.
- * @returns {boolean}
- */
 otpSchema.methods.isExpired = function () {
   return new Date() > this.expiresAt;
 };
@@ -96,12 +80,7 @@ otpSchema.methods.isExhausted = function () {
   return this.attempts >= this.maxAttempts;
 };
 
-/**
- * Verifies a plaintext code against the stored hash.
- * Uses timing-safe comparison to prevent timing attacks.
- * @param {string} plainCode - The OTP entered by the user
- * @returns {boolean}
- */
+
 otpSchema.methods.verifyCode = function (plainCode) {
   const hash = crypto
     .createHash('sha256')
