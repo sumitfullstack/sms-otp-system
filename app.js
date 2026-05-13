@@ -37,8 +37,24 @@ app.use(morgan('dev'));
 // --- Rate Limiting ---
 app.use(globalRateLimiter);
 
+// Welcome route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    service: 'SMS OTP Verification API',
+    version: '1.0.0',
+    endpoints: {
+      health:     'GET  /health',
+      sendOTP:    'POST /api/v1/otp/send',
+      verifyOTP:  'POST /api/v1/otp/verify',
+      profile:    'GET  /api/v1/user/me',
+    }
+  });
+});
+
 // --- Serve Frontend ---
 app.use(express.static(path.join(__dirname, 'frontend')));
+
 
 // --- Health Check ---
 app.get('/health', (req, res) => {
